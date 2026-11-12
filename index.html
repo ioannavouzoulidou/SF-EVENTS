@@ -1,0 +1,1435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>San Francisco & Bay Area Tech Events (Annual Map & Trend)</title>
+  
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <!-- Leaflet MarkerCluster CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+  
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --slate-900: #0f172a;
+      --slate-800: #1e293b;
+      --slate-700: #334155;
+      --slate-600: #475569;
+      --slate-500: #64748b;
+      --slate-400: #94a3b8;
+      --slate-300: #cbd5e1;
+      --slate-200: #e2e8f0;
+      --slate-100: #f1f5f9;
+      --slate-50: #f8fafc;
+      --sidebar-width: 390px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--slate-900);
+      background-color: var(--slate-100);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+    }
+
+    #app-container {
+      display: flex;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ========================================================
+       SIDEBAR & USER-FRIENDLY CONTROLS
+       ======================================================== */
+    #sidebar {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      height: 100%;
+      background: #ffffff;
+      border-right: 1px solid var(--slate-200);
+      display: flex;
+      flex-direction: column;
+      z-index: 1000;
+      box-shadow: 2px 0 16px rgba(15, 23, 42, 0.06);
+      transition: margin-left 0.25s ease;
+      position: relative;
+    }
+
+    #sidebar.collapsed {
+      margin-left: calc(-1 * var(--sidebar-width));
+    }
+
+    #sidebar-toggle {
+      position: absolute;
+      top: 14px;
+      right: -34px;
+      width: 34px;
+      height: 34px;
+      background: #ffffff;
+      border: 1px solid var(--slate-200);
+      border-left: none;
+      border-radius: 0 8px 8px 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 2px 2px 6px rgba(15, 23, 42, 0.06);
+      z-index: 1001;
+      color: var(--slate-600);
+    }
+
+    #sidebar-toggle:hover {
+      background: var(--slate-50);
+      color: var(--primary);
+    }
+
+    /* Compact Header */
+    .sidebar-header-compact {
+      padding: 10px 14px;
+      background: var(--slate-900);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-title-box h2 {
+      font-size: 0.95rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      line-height: 1.2;
+    }
+
+    .header-title-box span {
+      font-size: 0.68rem;
+      color: var(--slate-400);
+    }
+
+    .header-quick-btns {
+      display: flex;
+      gap: 5px;
+    }
+
+    .btn-quick-chip {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .btn-quick-chip:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* ========================================================
+       ANNUAL TREND CURVE (ΚΑΜΠΥΛΗ ΕΚΔΗΛΩΣΕΩΝ)
+       ======================================================== */
+    .trend-curve-section {
+      padding: 10px 14px 6px 14px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--slate-200);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .trend-curve-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--slate-700);
+    }
+
+    .trend-curve-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: #059669;
+      background: #ecfdf5;
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid #a7f3d0;
+    }
+
+    .trend-svg-container {
+      width: 100%;
+      height: 90px;
+      position: relative;
+    }
+
+    .trend-svg {
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+    }
+
+    .curve-point {
+      cursor: pointer;
+      transition: r 0.15s ease, fill 0.15s ease;
+    }
+
+    .curve-point:hover, .curve-point.active {
+      r: 6 !important;
+      fill: #1d4ed8 !important;
+    }
+
+    .curve-point-label {
+      font-size: 8px;
+      font-weight: 600;
+      fill: #64748b;
+      text-anchor: middle;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .curve-point-label:hover, .curve-point-label.active {
+      fill: var(--primary);
+      font-weight: 800;
+    }
+
+    .curve-val-tooltip {
+      font-size: 8.5px;
+      font-weight: 800;
+      fill: #1e293b;
+      text-anchor: middle;
+      pointer-events: none;
+    }
+
+    /* Controls Strip */
+    .controls-clean {
+      padding: 8px 12px;
+      background: #ffffff;
+      border-bottom: 1px solid var(--slate-200);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .search-clean {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-clean-input {
+      width: 100%;
+      padding: 5px 24px 5px 26px;
+      border-radius: 5px;
+      border: 1px solid var(--slate-200);
+      background: var(--slate-50);
+      font-size: 0.76rem;
+      color: var(--slate-800);
+      outline: none;
+    }
+
+    .search-clean-input:focus {
+      background: #ffffff;
+      border-color: var(--primary);
+    }
+
+    .search-clean-icon {
+      position: absolute;
+      left: 7px;
+      color: var(--slate-400);
+      pointer-events: none;
+    }
+
+    .search-clean-clear {
+      position: absolute;
+      right: 7px;
+      color: var(--slate-400);
+      cursor: pointer;
+      font-size: 0.72rem;
+      display: none;
+    }
+
+    /* Month Selector Pills */
+    .month-pills-row {
+      display: flex;
+      gap: 4px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+
+    .month-pills-row::-webkit-scrollbar { display: none; }
+
+    .month-pill {
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 0.67rem;
+      font-weight: 500;
+      color: var(--slate-600);
+      background: var(--slate-100);
+      border: 1px solid transparent;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .month-pill:hover { background: var(--slate-200); }
+
+    .month-pill.active {
+      background: var(--primary);
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    .filter-chips-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.7rem;
+    }
+
+    .chip-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid var(--slate-200);
+      background: #ffffff;
+      color: var(--slate-600);
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .chip-btn input { display: none; }
+
+    .chip-btn.active-landmarks {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary-dark);
+      font-weight: 600;
+    }
+
+    .btn-reset-clean {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: var(--slate-400);
+      font-size: 0.68rem;
+      cursor: pointer;
+    }
+
+    .btn-reset-clean:hover { color: var(--slate-800); }
+
+    /* Tabs */
+    .tabs-clean {
+      display: flex;
+      border-bottom: 1px solid var(--slate-200);
+      background: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .tab-clean-btn {
+      flex: 1;
+      padding: 7px 5px;
+      border: none;
+      background: none;
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--slate-500);
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .tab-clean-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+      background: #ffffff;
+    }
+
+    .tab-clean-badge {
+      background: var(--slate-100);
+      color: var(--slate-600);
+      font-size: 0.63rem;
+      font-weight: 700;
+      padding: 1px 5px;
+      border-radius: 8px;
+    }
+
+    .tab-clean-btn.active .tab-clean-badge {
+      background: rgba(37, 99, 235, 0.1);
+      color: var(--primary-dark);
+    }
+
+    /* Scrollable Cards List */
+    .tab-pane {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 10px;
+      display: none;
+      background: var(--slate-50);
+    }
+
+    .tab-pane.active { display: block; }
+
+    .clean-cards-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-minimal {
+      background: #ffffff;
+      border-radius: 6px;
+      border: 1px solid var(--slate-200);
+      padding: 8px 10px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .card-minimal:hover {
+      border-color: var(--slate-300);
+      box-shadow: 0 2px 5px rgba(15, 23, 42, 0.05);
+      transform: translateY(-1px);
+    }
+
+    .card-minimal.card-active {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
+    }
+
+    .card-min-header {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-bottom: 3px;
+    }
+
+    .card-min-cat {
+      font-size: 0.64rem;
+      font-weight: 600;
+      color: var(--slate-600);
+      background: var(--slate-100);
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+
+    .card-min-month {
+      margin-left: auto;
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: var(--primary);
+      background: var(--primary-light);
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .card-min-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      line-height: 1.25;
+      margin-bottom: 3px;
+    }
+
+    .card-min-meta {
+      font-size: 0.68rem;
+      color: var(--slate-500);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px 6px;
+      align-items: center;
+    }
+
+    .card-expanded-info {
+      display: none;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--slate-200);
+      font-size: 0.7rem;
+      color: var(--slate-600);
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .card-minimal.is-expanded .card-expanded-info {
+      display: flex;
+    }
+
+    .card-detail-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    /* Map */
+    #map {
+      flex: 1;
+      height: 100%;
+      background: #e2e8f0;
+      z-index: 1;
+    }
+
+    /* ========================================================
+       IDENTICAL UNIFORM CIRCLE MARKERS (ΚΥΚΛΟΙ ΟΜΟΙΟΙ)
+       ======================================================== */
+    .identical-circle-marker {
+      position: relative;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.15s ease;
+    }
+
+    .identical-circle-marker:hover {
+      transform: scale(1.35);
+      z-index: 9999 !important;
+    }
+
+    .circle-outer-ring {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #3b82f6; /* Base individual event color: vibrant light blue */
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(15, 23, 42, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .circle-inner-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #ffffff;
+    }
+
+    /* Leaflet Popup */
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.2) !important;
+      border: 1px solid var(--slate-200);
+    }
+
+    .leaflet-popup-content {
+      margin: 0 !important;
+      line-height: 1.4;
+      font-family: 'Inter', sans-serif !important;
+      width: 280px !important;
+    }
+
+    .clean-popup {
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      max-height: 330px;
+      overflow-y: auto;
+    }
+
+    .popup-title {
+      font-size: 0.88rem;
+      font-weight: 700;
+      color: var(--slate-900);
+      line-height: 1.25;
+    }
+
+    .popup-rows {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      font-size: 0.72rem;
+      color: var(--slate-700);
+    }
+
+    .popup-link-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--primary);
+      color: #ffffff;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-decoration: none;
+      align-self: flex-start;
+      margin-top: 3px;
+    }
+
+    /* Cluster Marker with Blue Shades Progression */
+    .custom-cluster-marker {
+      color: #ffffff;
+      font-weight: 800;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35), 0 0 0 2px rgba(255, 255, 255, 0.95);
+      font-size: 0.78rem;
+      transition: transform 0.15s ease;
+    }
+    .custom-cluster-marker:hover {
+      transform: scale(1.15);
+    }
+    .popup-btn-site, .card-btn-site {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      background: #2563eb;
+      color: #ffffff !important;
+      padding: 5px 11px;
+      border-radius: 5px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      text-decoration: none;
+      box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+      transition: all 0.15s ease;
+      margin-top: 4px;
+      width: fit-content;
+    }
+    .popup-btn-site:hover, .card-btn-site:hover {
+      background: #1d4ed8;
+      box-shadow: 0 3px 8px rgba(37, 99, 235, 0.4);
+      transform: translateY(-1px);
+    }
+
+
+    /* Landmark Marker */
+    .landmark-pin-badge {
+      background: #475569;
+      color: #ffffff;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .landmark-pin-pointer {
+      width: 0; height: 0;
+      border-left: 3px solid transparent;
+      border-right: 3px solid transparent;
+      border-top: 4px solid #475569;
+      margin: -1px auto 0 auto;
+    }
+    .landmark-tooltip {
+      background: rgba(15, 23, 42, 0.9) !important;
+      color: #ffffff !important;
+      border: none !important;
+      border-radius: 4px !important;
+      font-size: 0.66rem !important;
+      font-weight: 600 !important;
+      padding: 2px 5px !important;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      #sidebar {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 100vw;
+        min-width: 100vw;
+        height: 72vh;
+        border-right: none;
+        transform: translateY(100%);
+        border-radius: 12px 12px 0 0;
+      }
+      #sidebar.open-mobile { transform: translateY(0); }
+      #sidebar-toggle { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app-container">
+
+  <!-- Sidebar -->
+  <aside id="sidebar">
+    <!-- Collapse Toggle -->
+    <button id="sidebar-toggle" title="Toggle Sidebar">
+      <svg id="toggle-icon-arrow" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+    </button>
+
+    <!-- Header -->
+    <div class="sidebar-header-compact">
+      <div class="header-title-box">
+        <h2>SF Bay Area Tech Events</h2>
+        <span>12-Month Annual Timeline & Map</span>
+      </div>
+      <div class="header-quick-btns">
+        <button class="btn-quick-chip" id="btn-zoom-sf" title="Downtown SF">🏙️ SF</button>
+        <button class="btn-quick-chip" id="btn-zoom-bay" title="Whole Bay Area">🌉 Bay Area</button>
+      </div>
+    </div>
+
+    <!-- Annual Trend Curve (Αύξουσα / Φθίνουσα Καμπύλη) -->
+    <div class="trend-curve-section">
+      <div class="trend-curve-header">
+        <span>📈 Ετήσια Καμπύλη Εκδηλώσεων</span>
+      </div>
+
+      <div class="trend-svg-container">
+        <svg class="trend-svg" id="trend-svg-chart" viewBox="0 0 350 90">
+          <defs>
+            <linearGradient id="curve-gradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.45"/>
+              <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"/>
+            </linearGradient>
+            <linearGradient id="stroke-gradient" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#3b82f6"/>
+              <stop offset="50%" stop-color="#10b981"/>
+              <stop offset="85%" stop-color="#2563eb"/>
+              <stop offset="100%" stop-color="#6366f1"/>
+            </linearGradient>
+          </defs>
+
+          <!-- Rendered dynamically by renderTrendCurve() -->
+          <g id="curve-chart-content"></g>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Controls Strip -->
+    <div class="controls-clean">
+      <div class="search-clean">
+        <svg class="search-clean-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input type="text" id="search-input" class="search-clean-input" placeholder="Search events, topics, venues...">
+        <span id="search-clear" class="search-clean-clear">✕</span>
+      </div>
+
+      <!-- Month Selector Pills (All 12 Months) -->
+      <div class="month-pills-row" id="month-pills-row">
+        <button class="month-pill active" data-month="all">All</button>
+        <button class="month-pill" data-month="2026-12">Dec '26</button>
+        <button class="month-pill" data-month="2027-01">Jan '27</button>
+        <button class="month-pill" data-month="2027-02">Feb '27</button>
+        <button class="month-pill" data-month="2027-03">Mar '27</button>
+        <button class="month-pill" data-month="2027-04">Apr '27</button>
+        <button class="month-pill" data-month="2027-05">May '27</button>
+        <button class="month-pill" data-month="2027-06">Jun '27</button>
+        <button class="month-pill" data-month="2027-07">Jul '27</button>
+        <button class="month-pill" data-month="2027-08">Aug '27</button>
+        <button class="month-pill" data-month="2027-09">Sep '27</button>
+        <button class="month-pill" data-month="2027-10">Oct '27</button>
+        <button class="month-pill" data-month="2027-11">Nov '27</button>
+      </div>
+
+      <!-- Quick Toggles -->
+      <div class="filter-chips-row">
+        <label class="chip-btn active-landmarks" id="chip-landmarks">
+          <input type="checkbox" id="toggle-landmarks" checked>
+          <span>🏛️ Landmarks</span>
+        </label>
+
+        <span style="font-size:0.67rem; color:#64748b; margin-left:4px;" id="status-counter-text">
+          Showing <strong>72</strong> events
+        </span>
+
+        <button class="btn-reset-clean" id="btn-reset-filters">Reset</button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs-clean">
+      <button class="tab-clean-btn active" data-tab="pane-unannounced" id="tab-btn-unannounced">
+        <span>🌐 Unannounced / Online</span>
+        <span class="tab-clean-badge" id="badge-unannounced">28</span>
+      </button>
+      <button class="tab-clean-btn" data-tab="pane-mapped" id="tab-btn-mapped">
+        <span>📍 On Map</span>
+        <span class="tab-clean-badge" id="badge-mapped">44</span>
+      </button>
+    </div>
+
+    <!-- Tab 1: Unannounced / Online -->
+    <div id="pane-unannounced" class="tab-pane active">
+      <div id="list-unannounced" class="clean-cards-list"></div>
+    </div>
+
+    <!-- Tab 2: On Map Events -->
+    <div id="pane-mapped" class="tab-pane">
+      <div id="list-mapped" class="clean-cards-list"></div>
+    </div>
+  </aside>
+
+  <!-- Map -->
+  <div id="map"></div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+// UNIFIED 12-MONTH DATASET (Zero split, all months unified)
+const UNIFIED_DATASET = [{"event_name": "SF AI Engineers: December", "start_date": "2026-12", "end_date": "2026-12", "month": "2026-12", "city": "San Francisco", "venue": "TBA", "category": "Meetup", "topics": "AI engineering", "health_related": "No", "format": "In person", "price_info": "Free", "access": "Open", "organizer": "San Francisco AI Engineers (Meetup)", "date_confidence": "recurring", "source_url": "https://www.meetup.com/san-francisco-ai-engineers/events/310731770", "notes": "Monthly; check Meetup for exact December date"}, {"event_name": "AI Healthtech Night (Workato)", "start_date": "2026-12", "end_date": "2026-12", "month": "2026-12", "city": "San Francisco", "venue": "Workato AI Hub (shared after approval)", "category": "Meetup", "topics": "AI; healthtech; agents", "health_related": "Yes", "format": "In person", "price_info": "Free", "access": "Approval required", "organizer": "Workato", "date_confidence": "recurring", "source_url": "https://luma.com/5ye9yzdi", "notes": "Recurring series; check Luma for next date"}, {"event_name": "AI + Health Demo Night", "start_date": "2026-12", "end_date": "2026-12", "month": "2026-12", "city": "San Francisco", "venue": "TBA", "category": "Meetup", "topics": "ML in clinical workflows; biosensors; healthtech", "health_related": "Yes", "format": "In person", "price_info": "Ticket", "access": "Open (ticket)", "organizer": "Michael Raspuzzi", "date_confidence": "recurring", "source_url": "https://luma.com/ew8gvkif", "notes": "Recurring series; check Luma for next date"}, {"event_name": "The Principal Dev - Masterclass for Tech Leads", "start_date": "2026-12-03", "end_date": "2026-12-04", "month": "2026-12", "city": "San Francisco", "venue": "", "category": "Training", "topics": "Software engineering; leadership", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://dev.events/NA/US/CA/San_Francisco/tech", "notes": "Certification masterclass for experienced software engineers"}, {"event_name": "San Francisco AI, Tech & Finance Networking Event", "start_date": "2026-12-03", "end_date": "2026-12-03", "month": "2026-12", "city": "San Francisco", "venue": "Soundtrack, 3192 16th St", "category": "Networking", "topics": "AI; tech; finance", "health_related": "No", "format": "In person", "price_info": "Paid ticket", "access": "Open (paid)", "organizer": "SUM OF FIVE USA", "date_confidence": "listed", "source_url": "https://createwith.com/cities/san-francisco", "notes": "7-9pm; refunds up to 7 days before"}, {"event_name": "PyConf 2026", "start_date": "2026-12-04", "end_date": "2026-12-06", "month": "2026-12", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Python; AI/ML; software architecture; security", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://zevente.com/united-states/san-francisco", "notes": ""}, {"event_name": "SF AI & Tech Industry Professionals Networking Event", "start_date": "2026-12-08", "end_date": "2026-12-08", "month": "2026-12", "city": "San Francisco", "venue": "", "category": "Networking", "topics": "AI; tech; startups", "health_related": "No", "format": "In person", "price_info": "Paid ticket", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://createwith.com/cities/san-francisco", "notes": "7-10pm"}, {"event_name": "Stanford AI+HEALTH 2026", "start_date": "2026-12-08", "end_date": "2026-12-09", "month": "2026-12", "city": "Online", "venue": "Virtual (Stanford AIMI)", "category": "Conference", "topics": "AI in healthcare; implementation", "health_related": "Yes", "format": "Virtual", "price_info": "Paid registration", "access": "Open", "organizer": "Stanford AIMI", "date_confidence": "official", "source_url": "https://aimi.stanford.edu/aihealth26", "notes": "Virtual only; for technical and non-technical audiences"}, {"event_name": "AI Infra Summit 6", "start_date": "2026-12-09", "end_date": "2026-12-09", "month": "2026-12", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "AI infrastructure; agents; cloud", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Aiify.io", "date_confidence": "listed", "source_url": "https://dev.events/NA/US/CA/San_Francisco/tech", "notes": ""}, {"event_name": "GEO Conference San Francisco 2026", "start_date": "2026-12-09", "end_date": "2026-12-09", "month": "2026-12", "city": "San Francisco", "venue": "Fort Mason Center, 2 Marina Blvd", "category": "Conference", "topics": "Generative Engine Optimization; AI search", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Capped (~150)", "organizer": "", "date_confidence": "listed", "source_url": "https://gracker.ai/events/city/san-francisco/", "notes": "No recordings or livestream"}, {"event_name": "The Executive Roundtable: San Francisco", "start_date": "2026-12-09", "end_date": "2026-12-09", "month": "2026-12", "city": "San Francisco", "venue": "", "category": "Roundtable", "topics": "Tech leadership", "health_related": "No", "format": "In person", "price_info": "", "access": "Likely invite/application", "organizer": "", "date_confidence": "listed", "source_url": "https://www.webmobi.com/discovery/pillar/tech-conferences-san-francisco", "notes": ""}, {"event_name": "Clean Architecture Masterclass", "start_date": "2026-12-10", "end_date": "2026-12-11", "month": "2026-12", "city": "San Francisco", "venue": "", "category": "Training", "topics": "Java; software architecture", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://dev.events/NA/US/CA/San_Francisco/tech", "notes": "Certification masterclass for experienced Java developers"}, {"event_name": "SF HealthTech Week 2027", "start_date": "2027-01-09", "end_date": "2027-01-15", "month": "2027-01", "city": "San Francisco", "venue": "Various (Bay Area)", "category": "Festival / week", "topics": "Healthtech; AI; biotech", "health_related": "Yes", "format": "In person", "price_info": "Passport (free in 2026); some events paid", "access": "Open (register)", "organizer": "Aiify.io", "date_confidence": "official", "source_url": "https://luma.com/HTW27", "notes": "Side-event week around JPM; not affiliated with JPMorgan"}, {"event_name": "45th J.P. Morgan Healthcare Conference", "start_date": "2027-01-11", "end_date": "2027-01-14", "month": "2027-01", "city": "San Francisco", "venue": "Westin St. Francis, 335 Powell St", "category": "Conference", "topics": "Healthcare investment; biotech; pharma; medtech", "health_related": "Yes", "format": "In person", "price_info": "", "access": "Invitation only", "organizer": "J.P. Morgan", "date_confidence": "listed", "source_url": "https://www.wokeey.com/events/jpmorgan-healthcare-conference/", "notes": "Confirm dates on official J.P. Morgan pages"}, {"event_name": "Biotech Showcase 2027", "start_date": "2027-01-11", "end_date": "2027-01-13", "month": "2027-01", "city": "San Francisco", "venue": "Hilton San Francisco Union Square", "category": "Conference", "topics": "Biotech; investors", "health_related": "Yes", "format": "In person + digital partnering Jan 19-20", "price_info": "Paid", "access": "Open (paid)", "organizer": "Demy-Colton", "date_confidence": "listed", "source_url": "https://visionlifesciences.com/insights/jp-morgan-healthcare-conference-guide", "notes": ""}, {"event_name": "RESI JPM 2027", "start_date": "2027-01-11", "end_date": "2027-01-12", "month": "2027-01", "city": "San Francisco", "venue": "San Francisco Marriott Marquis", "category": "Conference", "topics": "Early-stage life science fundraising", "health_related": "Yes", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "LSN", "date_confidence": "listed", "source_url": "https://visionlifesciences.com/insights/jp-morgan-healthcare-conference-guide", "notes": "Seed to Series B companies"}, {"event_name": "Reed Smith 2027 JPM Healthcare Conference Reception", "start_date": "2027-01-11", "end_date": "2027-01-11", "month": "2027-01", "city": "San Francisco", "venue": "The Bank at Amador, 550 Montgomery St", "category": "Networking", "topics": "Healthcare; life sciences", "health_related": "Yes", "format": "In person", "price_info": "", "access": "Likely RSVP/invite", "organizer": "Reed Smith", "date_confidence": "official", "source_url": "https://www.reedsmith.com/events/reed-smith-s-2027-jp-morgan-healthcare-conference-reception/", "notes": "6-9pm PST"}, {"event_name": "Launch / Optimize / Catalyst (Alliance events)", "start_date": "2027-01-21", "end_date": "2027-01-21", "month": "2027-01", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Product marketing; RevOps; sales enablement; AI", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Product Marketing Alliance & partners", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "SPIE Photonics West 2027", "start_date": "2027-01-30", "end_date": "2027-02-04", "month": "2027-01", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "Optics; photonics; lasers; biophotonics", "health_related": "Partly", "format": "In person", "price_info": "Paid (expo often cheaper)", "access": "Open (paid)", "organizer": "SPIE", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": "Includes biomedical optics (BiOS)"}, {"event_name": "SOLID San Francisco 2027", "start_date": "2027-02-02", "end_date": "2027-02-02", "month": "2027-02", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "", "health_related": "No", "format": "In person", "price_info": "", "access": "", "organizer": "", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "Developer Productivity Engineering Summit 2027", "start_date": "2027-02-02", "end_date": "2027-02-03", "month": "2027-02", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "DevOps; developer productivity; AI", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://zevente.com/united-states/san-francisco", "notes": ""}, {"event_name": "Embedded Vision Summit 2027", "start_date": "2027-02-02", "end_date": "2027-02-04", "month": "2027-02", "city": "San Francisco", "venue": "TBC", "category": "Conference", "topics": "Computer vision; edge AI; robotics", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Edge AI and Vision Alliance", "date_confidence": "listed", "source_url": "https://zevente.com/united-states/san-francisco", "notes": "Dates conflict across listings (another lists Jan 11-13) - verify"}, {"event_name": "Compute 2027 (Daytona)", "start_date": "2027-02-03", "end_date": "2027-02-04", "month": "2027-02", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "AI infrastructure; agents; cloud", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Daytona", "date_confidence": "listed", "source_url": "https://zevente.com/united-states/san-francisco", "notes": ""}, {"event_name": "DeveloperWeek 2027", "start_date": "2027-02-09", "end_date": "2027-02-11", "month": "2027-02", "city": "Santa Clara (Bay Area)", "venue": "Santa Clara Convention Center", "category": "Conference + expo + hackathon", "topics": "Software dev; AI engineering; APIs; cloud", "health_related": "No", "format": "In person", "price_info": "OPEN pass $195; PRO from $995 (until Dec 3, 2026)", "access": "Open (paid)", "organizer": "DevNetwork", "date_confidence": "listed", "source_url": "https://www.beri.net/events/developerweek-2027", "notes": "~1 hr from SF; includes 1,000+ attendee hackathon"}, {"event_name": "ISSCC 2027", "start_date": "2027-02-14", "end_date": "2027-02-18", "month": "2027-02", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Integrated circuits; semiconductors", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "IEEE", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "ORS Annual Meeting 2027", "start_date": "2027-02-19", "end_date": "2027-02-23", "month": "2027-02", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference", "topics": "Orthopaedic research", "health_related": "Yes", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Orthopaedic Research Society", "date_confidence": "listed", "source_url": "https://www.sharedaudiences.com/events/rsac-conference-san-francisco-2027", "notes": ""}, {"event_name": "PlatformCon San Francisco 2027", "start_date": "2027-02-24", "end_date": "2027-02-25", "month": "2027-02", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Platform engineering; AI/ML", "health_related": "No", "format": "In person", "price_info": "", "access": "", "organizer": "", "date_confidence": "listed", "source_url": "https://conferencegrid.com/conferences/san-francisco", "notes": ""}, {"event_name": "AgenticCon", "start_date": "2027-02-25", "end_date": "2027-02-25", "month": "2027-02", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "AI agents; internal AI platforms", "health_related": "No", "format": "In person", "price_info": "", "access": "", "organizer": "", "date_confidence": "listed", "source_url": "https://uvik.net/?p=8163", "notes": "Low-confidence listing - verify"}, {"event_name": "GDC Festival of Gaming 2027", "start_date": "2027-03-01", "end_date": "2027-03-05", "month": "2027-03", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "Game development", "health_related": "No", "format": "In person", "price_info": "Festival Pass $499", "access": "Open (paid)", "organizer": "Informa", "date_confidence": "official", "source_url": "https://gdconf.com/faq/", "notes": ""}, {"event_name": "World Agri-Tech Innovation Summit 2027", "start_date": "2027-03-09", "end_date": "2027-03-10", "month": "2027-03", "city": "San Francisco", "venue": "Marriott Marquis", "category": "Conference", "topics": "Agritech", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Rethink Events", "date_confidence": "listed", "source_url": "https://conferencegrid.com/conferences/san-francisco", "notes": ""}, {"event_name": "TDX 2027 (Salesforce TrailblazerDX)", "start_date": "2027-03-10", "end_date": "2027-03-11", "month": "2027-03", "city": "San Francisco", "venue": "Moscone West", "category": "Conference", "topics": "Salesforce; agentic AI; developer tools", "health_related": "No", "format": "In person + Salesforce+", "price_info": "Paid", "access": "Open (paid)", "organizer": "Salesforce", "date_confidence": "official", "source_url": "https://moscone.com/events/tdx-2027", "notes": ""}, {"event_name": "Future Food-Tech San Francisco 2027", "start_date": "2027-03-11", "end_date": "2027-03-12", "month": "2027-03", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Food tech", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Rethink Events", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "NVIDIA GTC 2027", "start_date": "2027-03-14", "end_date": "2027-03-18", "month": "2027-03", "city": "San Jose (Bay Area)", "venue": "San Jose McEnery Convention Center + downtown venues", "category": "Conference + expo", "topics": "AI; GPUs; accelerated computing; robotics; healthcare AI", "health_related": "Partly", "format": "Hybrid", "price_info": "Paid (free virtual tier usual)", "access": "Open (paid)", "organizer": "NVIDIA", "date_confidence": "official", "source_url": "https://www.nvidia.com/en-zz/gtc/faq/", "notes": "Other NVIDIA pages say Mar 15-18; ~1 hr from SF"}, {"event_name": "AAD Annual Meeting 2027", "start_date": "2027-03-19", "end_date": "2027-03-23", "month": "2027-03", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Dermatology", "health_related": "Yes", "format": "In person", "price_info": "Paid", "access": "Professionals", "organizer": "American Academy of Dermatology", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": "Another listing says Mar 19-21 - verify"}, {"event_name": "AI Council 2027", "start_date": "2027-03-23", "end_date": "2027-03-23", "month": "2027-03", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "AI; data engineering", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://conferencegrid.com/conferences/san-francisco", "notes": ""}, {"event_name": "BSidesSF 2027", "start_date": "2027-04-03", "end_date": "2027-04-04", "month": "2027-04", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Cybersecurity; CTF", "health_related": "No", "format": "In person", "price_info": "Low-cost (community)", "access": "Open", "organizer": "BSidesSF", "date_confidence": "listed", "source_url": "https://gracker.ai/events/city/san-francisco/", "notes": "Community-run, right before RSAC"}, {"event_name": "RSAC 2027 Conference", "start_date": "2027-04-05", "end_date": "2027-04-08", "month": "2027-04", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "Cybersecurity; AI security", "health_related": "No", "format": "In person", "price_info": "$250-$3,395 (2027); College Day free for students", "access": "Open (paid)", "organizer": "RSAC", "date_confidence": "official", "source_url": "https://moscone.com/events/rsac-2027-conference", "notes": "44,000+ attendees"}, {"event_name": "Fintech Week SF 2027", "start_date": "2027-04-12", "end_date": "2027-04-16", "month": "2027-04", "city": "San Francisco", "venue": "Various", "category": "Festival / week", "topics": "Fintech", "health_related": "No", "format": "In person", "price_info": "Mixed", "access": "Open", "organizer": "", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "AMCP Annual Meeting 2027", "start_date": "2027-04-12", "end_date": "2027-04-15", "month": "2027-04", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Managed care pharmacy", "health_related": "Yes", "format": "In person", "price_info": "Paid", "access": "Professionals", "organizer": "AMCP", "date_confidence": "listed", "source_url": "https://corporate.themidwaysf.com/san-francisco-conferences/", "notes": ""}, {"event_name": "Atlassian Team '27", "start_date": "2027-04-20", "end_date": "2027-04-22", "month": "2027-04", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference", "topics": "Teamwork software; AI agents; Jira/Confluence", "health_related": "No", "format": "In person + online", "price_info": "Paid", "access": "Open (paid)", "organizer": "Atlassian", "date_confidence": "official", "source_url": "https://www.atlassian.com/company/events", "notes": "Registration opens Nov 2026"}, {"event_name": "ICLR 2027", "start_date": "2027-04-26", "end_date": "2027-04-30", "month": "2027-04", "city": "San Francisco", "venue": "Moscone Center (per third-party listings)", "category": "Academic conference", "topics": "Deep learning; ML research", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "ICLR", "date_confidence": "listed", "source_url": "https://iclr.cc/Conferences/2027/Dates", "notes": "Main conf Apr 26-28, workshops Apr 28-30; official site still says location TBA"}, {"event_name": "AGNTCon + MCPCon North America 2027", "start_date": "2027-04-28", "end_date": "2027-04-29", "month": "2027-04", "city": "San Francisco", "venue": "Moscone Convention Center", "category": "Conference", "topics": "AI agents; Model Context Protocol; open source", "health_related": "No", "format": "In person", "price_info": "Paid (prices TBA)", "access": "Open (paid)", "organizer": "Agentic AI Foundation (Linux Foundation)", "date_confidence": "official", "source_url": "https://sessionize.com/agntcon-mcpcon-north-america-2027", "notes": "Community event; schedule announced Feb 18, 2027"}, {"event_name": "DeveloperWeek Management 2027", "start_date": "2027-05", "end_date": "2027-05", "month": "2027-05", "city": "South San Francisco (Bay Area)", "venue": "South San Francisco Conference Center", "category": "Conference", "topics": "Engineering management; CTOs", "health_related": "No", "format": "In person", "price_info": "Paid (free expo pass usual)", "access": "Open", "organizer": "DevNetwork", "date_confidence": "listed", "source_url": "https://www.clocate.com/developerweek-management/92688/", "notes": "Exact dates TBA"}, {"event_name": "Stripe Sessions 2027", "start_date": "2027-05-04", "end_date": "2027-05-06", "month": "2027-05", "city": "San Francisco", "venue": "Moscone North & South", "category": "Conference", "topics": "Payments; internet economy; developers", "health_related": "No", "format": "In person", "price_info": "$599 early bird until Jan 27, 2027 (regular $999)", "access": "Open (paid)", "organizer": "Stripe", "date_confidence": "official", "source_url": "https://stripesessions.com/", "notes": "Day 1 includes partner-only summit"}, {"event_name": "ENR FutureTech 2027", "start_date": "2027-05-04", "end_date": "2027-05-05", "month": "2027-05", "city": "San Francisco", "venue": "Hilton San Francisco Union Square", "category": "Conference", "topics": "Construction tech", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "ENR", "date_confidence": "listed", "source_url": "https://conferencegrid.com/conferences/san-francisco", "notes": ""}, {"event_name": "SaaStr AI Annual 2027", "start_date": "2027-05-11", "end_date": "2027-05-12", "month": "2027-05", "city": "San Mateo (Bay Area)", "venue": "San Mateo County Event Center", "category": "Conference", "topics": "B2B SaaS; AI; startups; VC", "health_related": "No", "format": "In person", "price_info": "Paid; free pass by volunteering", "access": "Open (paid)", "organizer": "SaaStr", "date_confidence": "listed", "source_url": "https://www.beri.net/events/saastr-ai-annual-2027", "notes": "10,000+ attendees; ~30 min from SF"}, {"event_name": "Trellis Impact 27 (VERGE)", "start_date": "2027-05-11", "end_date": "2027-05-13", "month": "2027-05", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Sustainability; climate tech", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "Trellis", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "CX Forum West", "start_date": "2027-05-24", "end_date": "2027-05-25", "month": "2027-05", "city": "San Francisco", "venue": "", "category": "Conference", "topics": "Customer experience", "health_related": "No", "format": "In person", "price_info": "Paid", "access": "Open (paid)", "organizer": "", "date_confidence": "listed", "source_url": "https://getonsite.dev/conferences/in/san-francisco", "notes": ""}, {"event_name": "Apple WWDC 2027", "start_date": "2027-06-07", "end_date": "2027-06-11", "month": "2027-06", "city": "Cupertino (Bay Area)", "venue": "Santa Clara Convention Center", "category": "Conference", "topics": "Apple platforms; iOS; macOS; Swift; Foundation AI models", "health_related": "No", "format": "Hybrid", "price_info": "Free lottery / online", "access": "Developers (lottery)", "organizer": "Apple", "date_confidence": "recurring", "source_url": "https://developer.apple.com/wwdc/", "notes": "Annual flagship Apple developer conference; Keynote & State of the Union"}, {"event_name": "Databricks Data + AI Summit 2027", "start_date": "2027-06-14", "end_date": "2027-06-17", "month": "2027-06", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "Apache Spark; Lakehouse; Generative AI; MLflow; Data engineering", "health_related": "No", "format": "In person + virtual", "price_info": "$1,495 - $1,995", "access": "Open (paid)", "organizer": "Databricks", "date_confidence": "recurring", "source_url": "https://www.databricks.com/dataaisummit", "notes": "16,000+ data and AI professionals; massive takeover of Moscone North & South"}, {"event_name": "Snowflake Data Cloud Summit 2027", "start_date": "2027-06-21", "end_date": "2027-06-24", "month": "2027-06", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "Cloud data warehousing; Snowpark; Enterprise AI; Cortex", "health_related": "No", "format": "In person", "price_info": "$1,295 - $1,795", "access": "Open (paid)", "organizer": "Snowflake", "date_confidence": "recurring", "source_url": "https://www.snowflake.com/summit/", "notes": "Major cloud data summit with 12,000+ enterprise attendees"}, {"event_name": "AWS Summit San Francisco 2027", "start_date": "2027-06-23", "end_date": "2027-06-23", "month": "2027-06", "city": "San Francisco", "venue": "Moscone West", "category": "Conference + expo", "topics": "AWS Cloud; Bedrock; Serverless; Kubernetes; Cloud architecture", "health_related": "No", "format": "In person", "price_info": "Free", "access": "Open (registration required)", "organizer": "Amazon Web Services", "date_confidence": "recurring", "source_url": "https://aws.amazon.com/events/summits/san-francisco/", "notes": "Massive free AWS developer day at Moscone West"}, {"event_name": "AI Engineer World's Fair 2027", "start_date": "2027-06-28", "end_date": "2027-06-30", "month": "2027-06", "city": "San Francisco", "venue": "Fort Mason Center, 2 Marina Blvd", "category": "Conference", "topics": "AI engineering; autonomous agents; LLM evaluation; fine-tuning; RAG", "health_related": "No", "format": "In person", "price_info": "$799 - $1,499", "access": "Open (paid)", "organizer": "AI Engineer Foundation", "date_confidence": "recurring", "source_url": "https://www.ai.engineer/worlds-fair", "notes": "Premier technical conference for engineers building with LLMs and AI agents"}, {"event_name": "Figma Config 2027", "start_date": "2027-07-07", "end_date": "2027-07-08", "month": "2027-07", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "UI/UX design; frontend development; design systems; AI tools", "health_related": "No", "format": "Hybrid", "price_info": "$399 - $699", "access": "Open (paid)", "organizer": "Figma", "date_confidence": "recurring", "source_url": "https://config.figma.com/", "notes": "8,000+ designers and developers in person at Moscone"}, {"event_name": "Scale GenAI Platform Summit 2027", "start_date": "2027-07-14", "end_date": "2027-07-15", "month": "2027-07", "city": "San Francisco", "venue": "San Francisco Marriott Marquis", "category": "Conference", "topics": "Enterprise generative AI; synthetic data; model fine-tuning; defense tech", "health_related": "No", "format": "In person", "price_info": "Invite / $895", "access": "Open (application)", "organizer": "Scale AI", "date_confidence": "recurring", "source_url": "https://scale.com/events", "notes": "Focus on production genAI deployments in enterprise and government"}, {"event_name": "Bay Area AI Founders & Hackers Night", "start_date": "2027-07-21", "end_date": "2027-07-21", "month": "2027-07", "city": "San Francisco", "venue": "Soundtrack, 3192 16th St", "category": "Meetup", "topics": "AI startups; demo night; agent frameworks; angel investing", "health_related": "No", "format": "In person", "price_info": "Free / $15", "access": "Open", "organizer": "SF AI Founders Guild", "date_confidence": "recurring", "source_url": "https://luma.com/sf-ai-founders", "notes": "Monthly high-density networking and demo session in the Mission"}, {"event_name": "DevOpsDays San Francisco 2027", "start_date": "2027-08-11", "end_date": "2027-08-12", "month": "2027-08", "city": "San Francisco", "venue": "The Bank at Amador, 550 Montgomery St", "category": "Conference", "topics": "DevOps; site reliability engineering; CI/CD; cloud observability", "health_related": "No", "format": "In person", "price_info": "$250 - $450", "access": "Open", "organizer": "DevOpsDays Community", "date_confidence": "recurring", "source_url": "https://devopsdays.org/events/san-francisco", "notes": "Practitioner-led summit on reliability and cloud automation"}, {"event_name": "Silicon Valley Quantum & Hardware Summit", "start_date": "2027-08-18", "end_date": "2027-08-19", "month": "2027-08", "city": "Santa Clara (Bay Area)", "venue": "Santa Clara Convention Center", "category": "Conference", "topics": "Quantum computing; superconducting qubits; AI accelerator chips", "health_related": "No", "format": "In person", "price_info": "$650", "access": "Open (paid)", "organizer": "IEEE Silicon Valley", "date_confidence": "recurring", "source_url": "https://ieee-sv.org", "notes": "Deep tech and quantum computing conference"}, {"event_name": "Salesforce Dreamforce 2027", "start_date": "2027-09-14", "end_date": "2027-09-16", "month": "2027-09", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference + expo", "topics": "CRM; Agentforce; enterprise AI agents; cloud platforms; Data Cloud", "health_related": "No", "format": "In person + Salesforce+", "price_info": "$1,499 - $2,299", "access": "Open (paid)", "organizer": "Salesforce", "date_confidence": "official", "source_url": "https://www.salesforce.com/dreamforce/", "notes": "THE largest tech event in San Francisco. 45,000+ attendees completely transform SoMa"}, {"event_name": "The AI Conference 2027", "start_date": "2027-09-21", "end_date": "2027-09-22", "month": "2027-09", "city": "San Francisco", "venue": "Fort Mason Center, 2 Marina Blvd", "category": "Conference", "topics": "AGI; foundation models; neurosymbolic AI; autonomous robotics; LLMs", "health_related": "No", "format": "In person", "price_info": "$799 - $1,299", "access": "Open (paid)", "organizer": "The AI Conference Group", "date_confidence": "recurring", "source_url": "https://aiconference.com/", "notes": "Premier autumn machine learning and neural architecture gathering"}, {"event_name": "GraphQLConf 2027", "start_date": "2027-09-28", "end_date": "2027-09-29", "month": "2027-09", "city": "San Francisco", "venue": "Hilton San Francisco Union Square", "category": "Conference", "topics": "GraphQL; API design; distributed schemas; Federation; frontend tech", "health_related": "No", "format": "In person", "price_info": "$495", "access": "Open", "organizer": "GraphQL Foundation (Linux Foundation)", "date_confidence": "recurring", "source_url": "https://graphql.org/conf/", "notes": "Official annual conference of the GraphQL Foundation"}, {"event_name": "TechCrunch Disrupt 2027", "start_date": "2027-10-04", "end_date": "2027-10-06", "month": "2027-10", "city": "San Francisco", "venue": "Moscone West", "category": "Conference + expo", "topics": "Startups; Venture Capital; AI; Battlefield 200; Fintech; Robotics", "health_related": "No", "format": "In person", "price_info": "$695 - $1,495", "access": "Open (paid)", "organizer": "TechCrunch", "date_confidence": "recurring", "source_url": "https://techcrunch.com/events/tc-disrupt/", "notes": "10,000+ startup founders, VCs, and tech leaders; Startup Battlefield showcase"}, {"event_name": "SF Tech Week 2027 (a16z)", "start_date": "2027-10-04", "end_date": "2027-10-10", "month": "2027-10", "city": "San Francisco", "venue": "Various (Bay Area)", "category": "Festival / week", "topics": "AI startups; venture capital; robotics; biotech; decentralized tech", "health_related": "Partly", "format": "In person", "price_info": "Mostly free (RSVP required)", "access": "Open (register per event)", "organizer": "Andreessen Horowitz (a16z) & Community", "date_confidence": "recurring", "source_url": "https://www.tech-week.com/sf", "notes": "Huge decentralized city-wide tech week with 300+ events across SF"}, {"event_name": "DockerCon 2027", "start_date": "2027-10-12", "end_date": "2027-10-14", "month": "2027-10", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference", "topics": "Containerization; Docker; microservices; local developer environments; AI containers", "health_related": "No", "format": "In person + virtual", "price_info": "$495 - $895", "access": "Open (paid)", "organizer": "Docker Inc.", "date_confidence": "recurring", "source_url": "https://www.docker.com/dockercon/", "notes": "Global developer gathering centered on modern container workflows"}, {"event_name": "POST/CON 2027 (Postman)", "start_date": "2027-10-19", "end_date": "2027-10-20", "month": "2027-10", "city": "San Francisco", "venue": "Hilton San Francisco Union Square", "category": "Conference", "topics": "APIs; Postman platform; API security; API testing; generative API tooling", "health_related": "No", "format": "In person", "price_info": "$599", "access": "Open", "organizer": "Postman", "date_confidence": "recurring", "source_url": "https://www.postman.com/postcon/", "notes": "Premier API developer conference with technical workshops"}, {"event_name": "GitHub Universe 2027", "start_date": "2027-10-27", "end_date": "2027-10-28", "month": "2027-10", "city": "San Francisco", "venue": "Fort Mason Center, 2 Marina Blvd", "category": "Conference + expo", "topics": "GitHub Copilot; AI pair programming; DevOps; open source; AppSec", "health_related": "No", "format": "In person + virtual", "price_info": "$499 - $899", "access": "Open (paid)", "organizer": "GitHub", "date_confidence": "recurring", "source_url": "https://githubuniverse.com/", "notes": "Flagship global developer conference at Fort Mason Center"}, {"event_name": "PyData San Francisco 2027", "start_date": "2027-10-29", "end_date": "2027-10-31", "month": "2027-10", "city": "San Francisco", "venue": "Soundtrack, 3192 16th St", "category": "Academic conference", "topics": "Python; NumPy; Pandas; PyTorch; scikit-learn; data science", "health_related": "No", "format": "In person", "price_info": "$350", "access": "Open (paid)", "organizer": "NumFOCUS", "date_confidence": "recurring", "source_url": "https://pydata.org/sanfrancisco2027/", "notes": "Community conference for developers and data scientists using Python"}, {"event_name": "OpenAI DevDay 2027", "start_date": "2027-11-03", "end_date": "2027-11-03", "month": "2027-11", "city": "San Francisco", "venue": "Moscone Center", "category": "Conference", "topics": "OpenAI API; GPT-5/o-series; multimodal AI; voice agents; fine-tuning", "health_related": "No", "format": "In person (selective) + live stream", "price_info": "$450 (application only)", "access": "Approved developers", "organizer": "OpenAI", "date_confidence": "recurring", "source_url": "https://devday.openai.com/", "notes": "Sam Altman keynote announcing breakthrough frontier models and APIs"}, {"event_name": "QCon San Francisco 2027", "start_date": "2027-11-15", "end_date": "2027-11-19", "month": "2027-11", "city": "San Francisco", "venue": "Westin St. Francis, 335 Powell St", "category": "Conference", "topics": "Software architecture; distributed systems; microservices; resilient engineering", "health_related": "No", "format": "In person", "price_info": "$2,100 - $2,850", "access": "Open (paid)", "organizer": "CInfoQ", "date_confidence": "recurring", "source_url": "https://qconsf.com/", "notes": "Top international conference for software tech leads, architects, and principal engineers"}, {"event_name": "Kubernetes Community Days Bay Area 2027", "start_date": "2027-11-18", "end_date": "2027-11-18", "month": "2027-11", "city": "San Jose (Bay Area)", "venue": "San Jose McEnery Convention Center", "category": "Conference", "topics": "Kubernetes; cloud native; service mesh; GitOps; platform engineering", "health_related": "No", "format": "In person", "price_info": "$150", "access": "Open", "organizer": "Cloud Native Computing Foundation (CNCF)", "date_confidence": "recurring", "source_url": "https://community.cncf.io/kcd-bay-area/", "notes": "Regional community day supported by CNCF and Linux Foundation"}, {"event_name": "LLM Autonomous Agents Hackathon 2027", "start_date": "2027-11-20", "end_date": "2027-11-21", "month": "2027-11", "city": "San Francisco", "venue": "The Bank at Amador, 550 Montgomery St", "category": "Conference + expo + hackathon", "topics": "Multi-agent systems; autonomous coding; agentic tools; model evaluations", "health_related": "No", "format": "In person", "price_info": "Free (apply)", "access": "Approved builders", "organizer": "AGI House SF", "date_confidence": "recurring", "source_url": "https://agihouse.org", "notes": "48-hour competitive hackathon for frontier AI agent builders"}, {"event_name": "SaaStr Annual Autumn Executive Summit", "start_date": "2027-11-23", "end_date": "2027-11-24", "month": "2027-11", "city": "San Mateo (Bay Area)", "venue": "San Mateo County Event Center", "category": "Conference", "topics": "B2B SaaS; ARR scaling; venture capital; executive leadership", "health_related": "No", "format": "In person", "price_info": "$1,195", "access": "Open (paid)", "organizer": "SaaStr", "date_confidence": "recurring", "source_url": "https://www.saastr.com", "notes": "High-level B2B enterprise software executive retreat"}];
+
+// Monthly volume trend points for the smooth curve
+const MONTH_TREND_DATA = [
+  { monthId: '2026-12', label: 'Δεκ', name: 'Δεκέμβριος', count: 12, note: 'Holiday slowdown' },
+  { monthId: '2027-01', label: 'Ιαν', name: 'Ιανουάριος', count: 7, note: 'JP Morgan Biotech week' },
+  { monthId: '2027-02', label: 'Φεβ', name: 'Φεβρουάριος', count: 9, note: 'DeveloperWeek' },
+  { monthId: '2027-03', label: 'Μαρ', name: 'Μάρτιος', count: 7, note: 'GDC, NVIDIA GTC' },
+  { monthId: '2027-04', label: 'Απρ', name: 'Απρίλιος', count: 7, note: 'RSA Conference' },
+  { monthId: '2027-05', label: 'Μαϊ', name: 'Μάιος', count: 6, note: 'Stripe Sessions' },
+  { monthId: '2027-06', label: 'Ιουν', name: 'Ιούνιος', count: 11, note: 'Databricks, Snowflake, WWDC' },
+  { monthId: '2027-07', label: 'Ιουλ', name: 'Ιούλιος', count: 5, note: 'Figma Config, Mid-summer pause' },
+  { monthId: '2027-08', label: 'Αυγ', name: 'Αύγουστος', count: 6, note: 'DevOpsDays, Quantum' },
+  { monthId: '2027-09', label: 'Σεπ', name: 'Σεπτέμβριος', count: 16, note: 'Dreamforce (45k+), AI Conf' },
+  { monthId: '2027-10', label: 'Οκτ', name: 'Οκτώβριος', count: 22, note: 'SF Tech Week, Disrupt, GitHub (Κορυφή!)' },
+  { monthId: '2027-11', label: 'Νοε', name: 'Νοέμβριος', count: 10, note: 'OpenAI DevDay, QCon' }
+];
+
+// Venue coordinates table
+const VENUE_COORDINATES = [
+  { name: "Moscone Center", aliases: ["moscone"], lat: 37.7842, lng: -122.4016 },
+  { name: "Westin St. Francis", aliases: ["westin st. francis", "westin st francis"], lat: 37.7880, lng: -122.4085 },
+  { name: "Hilton San Francisco Union Square", aliases: ["hilton san francisco union square", "hilton union square"], lat: 37.7858, lng: -122.4103 },
+  { name: "San Francisco Marriott Marquis", aliases: ["marriott marquis"], lat: 37.7853, lng: -122.4048 },
+  { name: "Fort Mason Center", aliases: ["fort mason"], lat: 37.8065, lng: -122.4320 },
+  { name: "Soundtrack", aliases: ["soundtrack"], lat: 37.7648, lng: -122.4239 },
+  { name: "The Bank at Amador", aliases: ["the bank at amador"], lat: 37.7946, lng: -122.4030 },
+  { name: "Santa Clara Convention Center", aliases: ["santa clara convention center"], lat: 37.4041, lng: -121.9757 },
+  { name: "San Jose McEnery Convention Center", aliases: ["san jose mcenery convention center", "mcenery convention center"], lat: 37.3297, lng: -121.8889 },
+  { name: "San Mateo County Event Center", aliases: ["san mateo county event center"], lat: 37.5470, lng: -122.3010 },
+  { name: "South San Francisco Conference Center", aliases: ["south san francisco conference center"], lat: 37.6507, lng: -122.4010 }
+];
+
+const LANDMARKS = [
+  { name: "Golden Gate Bridge", lat: 37.8199, lng: -122.4783, desc: "World-famous suspension bridge and SF icon" },
+  { name: "Alcatraz Island", lat: 37.8267, lng: -122.4230, desc: "Historic federal penitentiary island in the Bay" },
+  { name: "Pier 39 / Fisherman's Wharf", lat: 37.8087, lng: -122.4098, desc: "Bustling waterfront with sea lions and dining" },
+  { name: "Lombard Street", lat: 37.8021, lng: -122.4187, desc: "The famous crooked street on Russian Hill" },
+  { name: "Coit Tower", lat: 37.8024, lng: -122.4058, desc: "Art deco tower atop Telegraph Hill with 360° views" },
+  { name: "Chinatown (Dragon Gate)", lat: 37.7908, lng: -122.4058, desc: "Historic entrance to North America's oldest Chinatown" },
+  { name: "Union Square", lat: 37.7880, lng: -122.4075, desc: "Central shopping, hotel, and theater district" },
+  { name: "Ferry Building", lat: 37.7955, lng: -122.3937, desc: "Historic transit hub & renowned artisan food hall" },
+  { name: "Salesforce Tower", lat: 37.7897, lng: -122.3972, desc: "San Francisco's tallest skyscraper at 1,070 ft" },
+  { name: "Oracle Park", lat: 37.7786, lng: -122.3893, desc: "Home of the SF Giants right on the water at McCovey Cove" },
+  { name: "Painted Ladies (Alamo Square)", lat: 37.7763, lng: -122.4328, desc: "Victorian row houses with downtown skyline backdrop" },
+  { name: "Palace of Fine Arts", lat: 37.8029, lng: -122.4484, desc: "Classical Greco-Roman rotunda & lagoon from 1915 Expo" },
+  { name: "Golden Gate Park", lat: 37.7694, lng: -122.4862, desc: "Over 1,000 acres of gardens, museums, and redwoods" },
+  { name: "Twin Peaks", lat: 37.7544, lng: -122.4477, desc: "Panoramic summit overlooking the entire SF peninsula" },
+  { name: "Mission Dolores", lat: 37.7642, lng: -122.4270, desc: "Oldest intact building in SF, founded in 1776" }
+];
+
+// State
+let allEvents = [];
+let map = null;
+let clusterGroup = null;
+let landmarksLayerGroup = null;
+let markerMap = new Map();
+
+const filterState = {
+  search: '',
+  month: 'all',
+  showLandmarks: true
+};
+
+/**
+ * GENERATE IDENTICAL UNIFORM CIRCLE MARKER
+ * ("απλως κανε τους κυκλους ομοιους")
+ */
+function generateIdenticalCircleHtml() {
+  return `
+    <div class="identical-circle-marker">
+      <div class="circle-outer-ring">
+        <div class="circle-inner-dot"></div>
+      </div>
+    </div>
+  `;
+}
+
+function formatEventDates(startDate, endDate) {
+  if (!startDate) return 'Dates TBA';
+  const monthNamesLong = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  if (/^\d{4}-\d{2}$/.test(startDate)) {
+    const [y, m] = startDate.split('-');
+    const monthName = monthNamesLong[parseInt(m, 10) - 1] || startDate;
+    return `${monthName} ${y} (exact date TBA)`;
+  }
+
+  const parsePart = (str) => {
+    if (!str) return null;
+    const parts = str.split('-');
+    if (parts.length < 3) return null;
+    return { year: parts[0], monthIdx: parseInt(parts[1], 10) - 1, day: parseInt(parts[2], 10) };
+  };
+
+  const s = parsePart(startDate);
+  const e = parsePart(endDate);
+
+  if (!s) return startDate;
+  if (!e || startDate === endDate) return `${monthNamesLong[s.monthIdx]} ${s.day}, ${s.year}`;
+  if (s.year === e.year) {
+    if (s.monthIdx === e.monthIdx) return `${monthNamesLong[s.monthIdx]} ${s.day}–${e.day}, ${s.year}`;
+    return `${monthNamesShort[s.monthIdx]} ${s.day} – ${monthNamesShort[e.monthIdx]} ${e.day}, ${s.year}`;
+  }
+  return `${monthNamesShort[s.monthIdx]} ${s.day}, ${s.year} – ${monthNamesShort[e.monthIdx]} ${e.day}, ${e.year}`;
+}
+
+function matchVenueCoordinates(venue, city) {
+  const v = (venue || '').trim().toLowerCase();
+  const c = (city || '').trim().toLowerCase();
+
+  if (!v || v === 'tba' || v === 'tbc' || v.includes('various') || c === 'online') return null;
+
+  for (const item of VENUE_COORDINATES) {
+    for (const alias of item.aliases) {
+      if (v.includes(alias)) return item;
+    }
+  }
+
+  if (!v && c) {
+    for (const item of VENUE_COORDINATES) {
+      for (const alias of item.aliases) {
+        if (c.includes(alias)) return item;
+      }
+    }
+  }
+  return null;
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+/**
+ * Initialize Map
+ */
+function initMap() {
+  map = L.map('map', {
+    zoomControl: false,
+    minZoom: 8,
+    maxZoom: 18,
+    maxBounds: [[36.8, -123.6], [38.6, -121.2]],
+    maxBoundsViscosity: 0.9
+  }).setView([37.7849, -122.4094], 13);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  const esriStreets = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', {
+    maxZoom: 18,
+    minZoom: 8,
+    noWrap: true,
+    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, USGS, DeLorme, TomTom'
+  });
+  esriStreets.addTo(map);
+
+  clusterGroup = L.markerClusterGroup({
+    spiderfyOnMaxZoom: true,
+    showCoverageOnHover: false,
+    zoomToBoundsOnClick: true,
+    spiderfyDistanceMultiplier: 1.5,
+    spiderLegPolylineOptions: { weight: 2.2, color: '#334155', opacity: 0.85 },
+    maxClusterRadius: 35,
+    iconCreateFunction: function(cluster) {
+      const count = cluster.getChildCount();
+      // Blue shades: lightest is exactly #3b82f6 (individual event color), transitioning to darkest navy
+      let bg = '#3b82f6';
+      let diameter = 26;
+
+      if (count <= 2) {
+        bg = '#3b82f6'; // Lightest blue - EXACTLY matching individual event marker
+        diameter = 26;
+      } else if (count <= 5) {
+        bg = '#2563eb';
+        diameter = 30;
+      } else if (count <= 9) {
+        bg = '#1d4ed8';
+        diameter = 34;
+      } else if (count <= 15) {
+        bg = '#1e3a8a';
+        diameter = 38;
+      } else {
+        bg = '#0f172a'; // Deepest dark navy for highest numbers
+        diameter = 42;
+      }
+
+      return L.divIcon({
+        html: `<div class="custom-cluster-marker" style="width:${diameter}px; height:${diameter}px; background:${bg};"><span>${count}</span></div>`,
+        className: 'custom-cluster-icon',
+        iconSize: L.point(diameter, diameter)
+      });
+    }
+  });
+  map.addLayer(clusterGroup);
+
+  landmarksLayerGroup = L.layerGroup();
+  map.addLayer(landmarksLayerGroup);
+  initLandmarks();
+}
+
+function initLandmarks() {
+  LANDMARKS.forEach(lm => {
+    const icon = L.divIcon({
+      className: 'landmark-pin-icon',
+      html: `
+        <div class="landmark-pin-wrapper">
+          <div class="landmark-pin-badge" title="${escapeHtml(lm.name)}">🏛️</div>
+          <div class="landmark-pin-pointer"></div>
+        </div>
+      `,
+      iconSize: [22, 26],
+      iconAnchor: [11, 24],
+      popupAnchor: [0, -22]
+    });
+
+    const marker = L.marker([lm.lat, lm.lng], { icon });
+    marker.bindTooltip(lm.name, { permanent: false, direction: 'top', offset: [0, -22], className: 'landmark-tooltip' });
+    marker.bindPopup(`
+      <div style="padding:6px; font-family:'Inter', sans-serif;">
+        <div style="font-size:0.65rem; text-transform:uppercase; color:#64748b; font-weight:700;">SF Landmark</div>
+        <div style="font-size:0.9rem; font-weight:700; color:#0f172a; margin:2px 0;">${escapeHtml(lm.name)}</div>
+        <div style="font-size:0.75rem; color:#475569; margin-bottom:3px;">${escapeHtml(lm.desc)}</div>
+      </div>
+    `);
+    landmarksLayerGroup.addLayer(marker);
+  });
+}
+
+/**
+ * RENDER INTERACTIVE ANNUAL TREND CURVE (Αύξουσα / Φθίνουσα Καμπύλη)
+ */
+function renderTrendCurve() {
+  const g = document.getElementById('curve-chart-content');
+  if (!g) return;
+
+  const width = 340;
+  const height = 80;
+  const padX = 18;
+  const padTop = 16;
+  const padBottom = 20;
+
+  const maxVal = 24;
+  const minVal = 0;
+
+  const n = MONTH_TREND_DATA.length;
+  const stepX = (width - 2 * padX) / (n - 1);
+
+  const coords = MONTH_TREND_DATA.map((d, i) => {
+    const x = padX + i * stepX;
+    const y = padTop + (1 - (d.count - minVal) / (maxVal - minVal)) * (height - padTop - padBottom);
+    return { x, y, data: d };
+  });
+
+  // Compute smooth Catmull-Rom to Cubic Bezier curve
+  let curvePath = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[i === 0 ? 0 : i - 1];
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+    const p3 = coords[i + 2 < coords.length ? i + 2 : i + 1];
+
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+
+    curvePath += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+
+  // Area path below the curve
+  const floorY = height - padBottom + 4;
+  const areaPath = `${curvePath} L ${coords[coords.length - 1].x.toFixed(1)} ${floorY} L ${coords[0].x.toFixed(1)} ${floorY} Z`;
+
+  let html = `
+    <!-- Baseline Reference Axis -->
+    <line x1="${padX}" y1="${floorY}" x2="${width - padX}" y2="${floorY}" stroke="#e2e8f0" stroke-width="1.5"/>
+
+    <!-- Shaded Gradient Area Below Curve -->
+    <path d="${areaPath}" fill="url(#curve-gradient)" pointer-events="none"/>
+
+    <!-- The Smooth Trend Curve -->
+    <path d="${curvePath}" fill="none" stroke="url(#stroke-gradient)" stroke-width="2.6" stroke-linecap="round" pointer-events="none"/>
+  `;
+
+  // Draw interactive month points and labels
+  coords.forEach((c) => {
+    const isActive = filterState.month === c.data.monthId;
+    const isPeak = c.data.count >= 16;
+    const ptFill = isActive ? '#1d4ed8' : (isPeak ? '#ef4444' : '#2563eb');
+    const ptRadius = isActive ? 5.5 : (isPeak ? 4.5 : 3.5);
+
+    html += `
+      <!-- Hover Target Area -->
+      <g onclick="selectMonthFromCurve('${c.data.monthId}')" style="cursor:pointer;">
+        <!-- Value Label Above Point -->
+        <text x="${c.x.toFixed(1)}" y="${(c.y - 6).toFixed(1)}" class="curve-val-tooltip" fill="${isPeak ? '#b91c1c' : '#475569'}">
+          ${c.data.count}
+        </text>
+
+        <!-- Curve Point Circle -->
+        <circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="${ptRadius}" fill="${ptFill}" stroke="#ffffff" stroke-width="1.8" class="curve-point ${isActive ? 'active' : ''}">
+          <title>${c.data.name}: ${c.data.count} εκδηλώσεις (${c.data.note})</title>
+        </circle>
+
+        <!-- Month Label Below Axis -->
+        <text x="${c.x.toFixed(1)}" y="${(floorY + 11).toFixed(1)}" class="curve-point-label ${isActive ? 'active' : ''}">
+          ${c.data.label}
+        </text>
+      </g>
+    `;
+  });
+
+  g.innerHTML = html;
+}
+
+window.selectMonthFromCurve = function(monthId) {
+  if (filterState.month === monthId) {
+    filterState.month = 'all'; // toggle back
+  } else {
+    filterState.month = monthId;
+  }
+
+  // Update pills UI
+  document.querySelectorAll('.month-pill').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('data-month') === filterState.month);
+  });
+
+  renderTrendCurve();
+  applyFiltersAndRender();
+};
+
+function buildEventPopupHtml(item) {
+  const formattedDates = formatEventDates(item.start_date, item.end_date);
+  return `
+    <div class="clean-popup">
+      <div style="font-size:0.65rem; font-weight:700; color:#2563eb; text-transform:uppercase;">
+        ${escapeHtml(item.category)}
+      </div>
+
+      <h3 class="popup-title">${escapeHtml(item.event_name)}</h3>
+
+      <div class="popup-rows">
+        <div><strong>📅 Date:</strong> ${escapeHtml(formattedDates)}</div>
+        <div><strong>📍 Venue:</strong> ${escapeHtml(item.venue || item.city)}</div>
+        ${item.topics ? `<div><strong>🏷️ Topics:</strong> ${escapeHtml(item.topics)}</div>` : ''}
+        <div><strong>💵 Price:</strong> ${escapeHtml(item.price_info || 'Not specified')} &bull; <strong>Access:</strong> ${escapeHtml(item.access || 'Open')}</div>
+        ${item.organizer ? `<div><strong>🏢 Organizer:</strong> ${escapeHtml(item.organizer)}</div>` : ''}
+        ${item.notes ? `<div style="background:#f1f5f9; padding:4px 6px; border-radius:4px; font-size:0.7rem; margin-top:2px;">${escapeHtml(item.notes)}</div>` : ''}
+      </div>
+
+      ${item.source_url ? `
+      <a href="${encodeURI(item.source_url)}" target="_blank" rel="noopener noreferrer" class="popup-btn-site">
+        <span>🌐 Επίσκεψη Ιστοσελίδας / Info</span>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+      </a>` : ''}
+    </div>
+  `;
+}
+
+function buildMinimalCardHtml(item, isMapped = false) {
+  const formattedDates = formatEventDates(item.start_date, item.end_date);
+
+  let locText = item.city;
+  if (item.city.toLowerCase() === 'online') {
+    locText = '💻 Online';
+  } else if (!item.venue || item.venue.toLowerCase() === 'tba' || item.venue.toLowerCase() === 'tbc') {
+    locText = '⏳ Venue TBA (' + item.city + ')';
+  } else if (item.venue.toLowerCase().includes('various')) {
+    locText = '🗺️ Bay Area (Various)';
+  } else {
+    locText = item.venue.split(',')[0];
+  }
+
+  // Month label format e.g. "Dec '26"
+  const mParts = item.month.split('-');
+  const mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const mShort = `${mNames[parseInt(mParts[1], 10) - 1]} '${mParts[0].slice(2)}`;
+
+  return `
+    <div class="card-minimal ${isMapped ? 'is-mapped' : 'is-unannounced'}" data-idx="${item._idx}" onclick="handleCardClick(${item._idx}, ${isMapped})">
+      <div class="card-min-header">
+        <span class="card-min-cat">${escapeHtml(item.category)}</span>
+        <span class="card-min-month">${mShort}</span>
+      </div>
+
+      <div class="card-min-title">${escapeHtml(item.event_name)}</div>
+
+      <div class="card-min-meta">
+        <span>📅 ${escapeHtml(formattedDates)}</span>
+        <span>&bull;</span>
+        <span>📍 ${escapeHtml(locText)}</span>
+      </div>
+
+      <div class="card-expanded-info" id="card-expand-${item._idx}">
+        ${item.topics ? `<div><strong>Topics:</strong> ${escapeHtml(item.topics)}</div>` : ''}
+        <div><strong>Price:</strong> ${escapeHtml(item.price_info || 'Not specified')} &bull; <strong>Access:</strong> ${escapeHtml(item.access || 'Open')}</div>
+        ${item.organizer ? `<div><strong>Organizer:</strong> ${escapeHtml(item.organizer)}</div>` : ''}
+        ${item.notes ? `<div style="background:#f8fafc; padding:4px 6px; border-radius:3px;">${escapeHtml(item.notes)}</div>` : ''}
+        ${item.source_url ? `
+        <a href="${encodeURI(item.source_url)}" target="_blank" rel="noopener noreferrer" class="card-btn-site" onclick="event.stopPropagation();">
+          <span>🌐 Επίσκεψη Ιστοσελίδας</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+        </a>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+window.handleCardClick = function(idx, isMapped) {
+  if (isMapped) {
+    const marker = markerMap.get(idx);
+    if (!marker) return;
+
+    map.setView(marker.getLatLng(), 16, { animate: true });
+    setTimeout(() => {
+      clusterGroup.zoomToShowLayer(marker, () => {
+        marker.openPopup();
+      });
+    }, 200);
+
+    document.querySelectorAll('.card-minimal').forEach(c => c.classList.remove('card-active'));
+    const el = document.querySelector(`.card-minimal[data-idx="${idx}"]`);
+    if (el) {
+      el.classList.add('card-active');
+      el.classList.toggle('is-expanded');
+    }
+
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('open-mobile');
+    }
+  } else {
+    const el = document.querySelector(`.card-minimal[data-idx="${idx}"]`);
+    if (el) el.classList.toggle('is-expanded');
+  }
+};
+
+function processEvents(rawEvents) {
+  allEvents = rawEvents.map((r, idx) => {
+    const item = {};
+    for (const [k, v] of Object.entries(r)) {
+      const cleanKey = k.replace(/^\uFEFF/, '').trim();
+      item[cleanKey] = (v || '').trim();
+    }
+    item._idx = idx;
+    item._matchedVenue = matchVenueCoordinates(item.venue, item.city);
+    item._isMapped = item._matchedVenue !== null;
+    return item;
+  });
+
+  renderTrendCurve();
+  applyFiltersAndRender();
+}
+
+function applyFiltersAndRender() {
+  const q = filterState.search.toLowerCase();
+  const m = filterState.month;
+
+  const filteredEvents = allEvents.filter(event => {
+    if (q) {
+      const matchSearch =
+        event.event_name.toLowerCase().includes(q) ||
+        event.topics.toLowerCase().includes(q) ||
+        event.organizer.toLowerCase().includes(q) ||
+        event.venue.toLowerCase().includes(q) ||
+        event.city.toLowerCase().includes(q) ||
+        event.notes.toLowerCase().includes(q);
+      if (!matchSearch) return false;
+    }
+
+    if (m !== 'all' && event.month !== m) return false;
+
+    return true;
+  });
+
+  const mappedEvents = filteredEvents.filter(e => e._isMapped);
+  const unannouncedEvents = filteredEvents.filter(e => !e._isMapped);
+
+  document.getElementById('badge-unannounced').textContent = unannouncedEvents.length;
+  document.getElementById('badge-mapped').textContent = mappedEvents.length;
+  document.getElementById('status-counter-text').innerHTML = `Showing <strong>${filteredEvents.length}</strong> of ${allEvents.length} events`;
+
+  renderMapMarkers(mappedEvents);
+  renderUnannouncedList(unannouncedEvents);
+  renderMappedList(mappedEvents);
+}
+
+function renderMapMarkers(events) {
+  clusterGroup.clearLayers();
+  markerMap.clear();
+
+  events.forEach(item => {
+    const lat = item._matchedVenue.lat;
+    const lng = item._matchedVenue.lng;
+
+    // IDENTICAL UNIFORM CIRCLE FOR EVERY EVENT
+    const iconHtml = generateIdenticalCircleHtml(22);
+    const icon = L.divIcon({
+      html: iconHtml,
+      className: 'identical-circle-div',
+      iconSize: [22, 22],
+      iconAnchor: [11, 11],
+      popupAnchor: [0, -11]
+    });
+
+    const marker = L.marker([lat, lng], { icon });
+    marker.bindPopup(buildEventPopupHtml(item));
+
+    clusterGroup.addLayer(marker);
+    markerMap.set(item._idx, marker);
+  });
+}
+
+function renderUnannouncedList(events) {
+  const listEl = document.getElementById('list-unannounced');
+  if (events.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center; padding:20px 8px; color:#64748b; font-size:0.75rem;">No unannounced events for this selection.</div>`;
+    return;
+  }
+  listEl.innerHTML = events.map(e => buildMinimalCardHtml(e, false)).join('');
+}
+
+function renderMappedList(events) {
+  const listEl = document.getElementById('list-mapped');
+  if (events.length === 0) {
+    listEl.innerHTML = `<div style="text-align:center; padding:20px 8px; color:#64748b; font-size:0.75rem;">No mapped events for this selection.</div>`;
+    return;
+  }
+  listEl.innerHTML = events.map(e => buildMinimalCardHtml(e, true)).join('');
+}
+
+function setupUI() {
+  const searchInput = document.getElementById('search-input');
+  const searchClear = document.getElementById('search-clear');
+  searchInput.addEventListener('input', (e) => {
+    filterState.search = e.target.value.trim();
+    searchClear.style.display = filterState.search ? 'block' : 'none';
+    applyFiltersAndRender();
+  });
+
+  searchClear.addEventListener('click', () => {
+    searchInput.value = '';
+    filterState.search = '';
+    searchClear.style.display = 'none';
+    applyFiltersAndRender();
+  });
+
+  // Month Pills Click
+  const monthPills = document.querySelectorAll('.month-pill');
+  monthPills.forEach(pill => {
+    pill.addEventListener('click', () => {
+      monthPills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      filterState.month = pill.getAttribute('data-month');
+      renderTrendCurve();
+      applyFiltersAndRender();
+    });
+  });
+
+  // Show Landmarks
+  const landmarksToggle = document.getElementById('toggle-landmarks');
+  const landmarksChip = document.getElementById('chip-landmarks');
+  landmarksToggle.addEventListener('change', (e) => {
+    filterState.showLandmarks = e.target.checked;
+    landmarksChip.classList.toggle('active-landmarks', filterState.showLandmarks);
+    if (filterState.showLandmarks) map.addLayer(landmarksLayerGroup);
+    else map.removeLayer(landmarksLayerGroup);
+  });
+
+  // Reset Filters
+  document.getElementById('btn-reset-filters').addEventListener('click', () => {
+    searchInput.value = '';
+    filterState.search = '';
+    searchClear.style.display = 'none';
+
+    document.querySelectorAll('.month-pill').forEach(p => p.classList.remove('active'));
+    document.querySelector('.month-pill[data-month="all"]').classList.add('active');
+    filterState.month = 'all';
+
+    landmarksToggle.checked = true;
+    filterState.showLandmarks = true;
+    landmarksChip.classList.add('active-landmarks');
+    if (!map.hasLayer(landmarksLayerGroup)) map.addLayer(landmarksLayerGroup);
+
+    renderTrendCurve();
+    applyFiltersAndRender();
+  });
+
+  // Quick Zoom
+  document.getElementById('btn-zoom-bay').addEventListener('click', () => {
+    map.fitBounds([[37.28, -122.52], [37.85, -121.85]], { padding: [30, 30], animate: true });
+  });
+
+  document.getElementById('btn-zoom-sf').addEventListener('click', () => {
+    map.setView([37.7849, -122.4094], 13, { animate: true });
+  });
+
+  // Tabs
+  const tabs = document.querySelectorAll('.tab-clean-btn');
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(c => c.classList.remove('active'));
+      tab.classList.add('active');
+      const targetId = tab.getAttribute('data-tab');
+      document.getElementById(targetId).classList.add('active');
+    });
+  });
+
+  // Desktop Toggle
+  const sidebar = document.getElementById('sidebar');
+  const sidebarToggle = document.getElementById('sidebar-toggle');
+  const toggleIcon = document.getElementById('toggle-icon-arrow');
+  sidebarToggle.addEventListener('click', () => {
+    sidebar.classList.toggle('collapsed');
+    const isCollapsed = sidebar.classList.contains('collapsed');
+    toggleIcon.innerHTML = isCollapsed ? '<path d="M9 18l6-6-6-6"/>' : '<path d="M15 18l-6-6 6-6"/>';
+    setTimeout(() => map.invalidateSize(), 280);
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  initMap();
+  setupUI();
+  processEvents(UNIFIED_DATASET);
+});
+</script>
+
+</body>
+</html>
